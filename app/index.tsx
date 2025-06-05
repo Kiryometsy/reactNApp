@@ -1,4 +1,4 @@
-import { Text, View, StyleSheet, Image, TouchableOpacity } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 //import PostItImage from "@/assets/images/post-it.png"
 import { useRouter } from "expo-router";
 
@@ -18,6 +18,12 @@ const HomeScreen = () => {
         onPress={() => router.push("/notes")}
       >
         <Text style={styles.buttonText}>Get Started</Text>
+      </TouchableOpacity>
+      <TouchableOpacity 
+        style={styles.button}
+        onPress={() => router.push("/authors")}
+      >
+        <Text style={styles.buttonText}>Authors</Text>
       </TouchableOpacity>
     </View>
   );
@@ -50,12 +56,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   button: {
-    backgroundColor: '#007bff',
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
+  backgroundColor: '#007bff',
+  paddingVertical: 12,
+  paddingHorizontal: 25,
+  borderRadius: 8,
+  alignItems: 'center',
+  width: 200, // <- fixed width ensures consistency
+  marginVertical: 8, // optional: add spacing between buttons
+},
+
   buttonText: {
     color: '#fff',
     fontSize: 18,

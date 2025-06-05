@@ -1,144 +1,223 @@
-import { useCallback, useEffect, useState } from "react";
-import { View, Text, StyleSheet, FlatList, TouchableOpacity,Modal,TextInput } from "react-native";
 import AddNoteModal from "@/app/components/AddNoteModal";
-import NoteItem from "@/app/components/noteItem";
 import NoteList from "@/app/components/noteList";
-import { useSQLiteContext } from "expo-sqlite";
+import useDbService from "@/app/lib/db";
 import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import {
+	ActivityIndicator,
+	Alert,
+	Keyboard,
+	KeyboardAvoidingView,
+	Platform,
+	StyleSheet,
+	Text,
+	TouchableOpacity,
+	TouchableWithoutFeedback,
+	View
+} from "react-native";
+
+type Note = {
+  id: number;
+  noteId: string;
+  text: string;
+};
 
 const NoteScreen = () => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [newNote, setNewNote] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [currentlyEditingId, setCurrentlyEditingId] = useState<number | null>(null);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
-    const [modalVisible,setModalVisible]=useState(false);
-    const [newNote,setNewNote]=useState('');
-    const database=useSQLiteContext();
-    const [notes, setNotes] = useState([])
-    useFocusEffect(
-        useCallback(()=>{
-            getList();
-        },[])
-    )
-   
-    async function getList(){
-        try{
-            const list=await database.getAllAsync("SELECT * FROM Notes")
-            console.log("in notes",list)
-            setNotes(list)
-        }catch(err){
-            console.error("Get Notes error",err)
-        }
-    }
-    async function mockDb(){
-        await database.execAsync(`
-            CREATE TABLE IF NOT EXISTS Notes (id INTEGER PRIMARY KEY NOT NULL, noteId TEXT NOT NULL, text Text NOT NULL);
-            INSERT INTO Notes (noteId, text) VALUES ('1', 'note 1');
-            INSERT INTO Notes (noteId, text) VALUES ('2', 'note 2');
-            INSERT INTO Notes (noteId, text) VALUES ('3', 'note 3');
-            `);
-            getList();
-    }
-    async function deleteTable(){
-        try{
-            const list=await database.getAllAsync("DELETE FROM Notes")
-            
-            
-        }catch(err){
-            console.error("deleteing table error",err)
-        }
+  const noteService = useDbService();
+
+  useFocusEffect(
+    useCallback(() => {
+      const init = async () => {
+        await noteService.initTable();
         getList();
-    }
-    const addNote = async () => {
-        const statement = await database.prepareAsync(
-            'INSERT INTO Notes (noteId, text) VALUES ($noteId, $text)'
-            );
-        if (newNote.trim() === '') return;
-        const id=Date.now.toString();
-        
-        await statement.executeAsync({ $noteId: id, $text: newNote });
-        //getNoteList();
-        setNewNote('');
-        setModalVisible(false);
-        getList();
+      };
+      init();
+    }, [])
+  );
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
     };
+  }, []);
 
-    return ( <View style={styles.container}>
-        {/* note list  */}
-        <NoteList notes={notes}/>
+  async function getList() {
+    setLoading(true);
+    const list = await noteService.getNoteList();
+    setNotes(list);
+    setLoading(false);
+  }
 
-        <TouchableOpacity style={styles.addButton} onPress={()=>setModalVisible(true) }>
+  async function mockDb() {
+    await noteService.mockData();
+    getList();
+  }
+
+  async function deleteTable() {
+    await noteService.deleteTable();
+    getList();
+  }
+
+  async function addNote() {
+    if (newNote.trim() === "") return;
+    const id = Date.now().toString();
+    await noteService.addNoteToTable(id, newNote);
+    setNewNote("");
+    setModalVisible(false);
+    getList();
+  }
+
+  async function deleteNote(id: number) {
+    Alert.alert("Delete Note", "Are you sure you want to delete this note?", [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          await noteService.deleteNote(id);
+          setNotes((notes) => notes.filter((note) => note.id !== id));
+        },
+      },
+    ]);
+  }
+
+  async function editNote(id: number, editedText: string) {
+    if (!editedText.trim()) {
+      Alert.alert("Error", "Note text cannot be empty");
+      return;
+    }
+
+    await noteService.editNote(id, editedText);
+    setNotes((prevNotes) =>
+      prevNotes.map((note) =>
+        note.id === id ? { ...note, text: editedText } : note
+      )
+    );
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 80}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.container}>
+          {loading ? (
+            <ActivityIndicator size="large" color="#007bff" />
+          ) : notes.length === 0 ? (
+            <Text style={styles.noNotesText}>You have no notes</Text>
+          ) : (
+            <NoteList
+              notes={notes}
+              onDelete={deleteNote}
+              onEdit={editNote}
+              currentlyEditingId={currentlyEditingId}
+              onStartEditing={setCurrentlyEditingId}
+            />
+          )}
+
+          {/* Always show Add Note button */}
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setModalVisible(true)}
+          >
             <Text style={styles.addButtonText}>+ Add Note</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.mockButton} onPress={()=>mockDb() }>
-            <Text style={styles.addButtonText}>Mock table</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.deleteButton} onPress={()=>deleteTable() }>
-            <Text style={styles.addButtonText}>delete table</Text>
-        </TouchableOpacity>
+          </TouchableOpacity>
 
-         {/* Modal */}
-        <AddNoteModal
+          {/* Conditionally render Mock/Delete buttons if keyboard not visible */}
+          {!keyboardVisible && (
+            <>
+              <TouchableOpacity style={styles.mockButton} onPress={mockDb}>
+                <Text style={styles.addButtonText}>Mock table</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.deleteButton} onPress={deleteTable}>
+                <Text style={styles.addButtonText}>Delete table</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          <AddNoteModal
             modalVisible={modalVisible}
             setModalVisible={setModalVisible}
             newNote={newNote}
             setNewNote={setNewNote}
             addNote={addNote}
-        />
-    </View>
-    );
-}
+          />
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
+  );
+};
 
- const styles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   addButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 20,
     left: 20,
     right: 20,
-    backgroundColor: '#007bff',
+    backgroundColor: "#007bff",
     padding: 15,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   addButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   errorText: {
-    color: 'red',
-    textAlign: 'center',
+    color: "red",
+    textAlign: "center",
     marginBottom: 10,
     fontSize: 16,
   },
   noNotesText: {
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#555',
+    fontWeight: "bold",
+    color: "#555",
     marginTop: 15,
   },
   mockButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 80,
     left: 20,
     right: 20,
-    backgroundColor: '#ccc',
+    backgroundColor: "#ccc",
     padding: 15,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   deleteButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 120,
     left: 20,
     right: 20,
-    backgroundColor: '#ccc',
+    backgroundColor: "#ccc",
     padding: 15,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
 });
+
 export default NoteScreen;
