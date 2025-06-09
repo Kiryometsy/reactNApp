@@ -1,26 +1,31 @@
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 //import PostItImage from "@/assets/images/post-it.png"
+import { useTheme } from "@/app/lib/ThemeContext";
 import { useRouter } from "expo-router";
 
 const PostItImage= require('@/assets/images/post-it.png');
 
 const HomeScreen = () => {
   const router = useRouter();
+
+  const { theme } = useTheme();
+  const bgColor   = theme === 'light' ? '#f8f9fa' : '#121212';
+  const txtColor  = theme === 'light' ? '#333'     : '#ddd';
+  const btnBg     = theme === 'light' ? '#007bff'  : '#1e90ff';
+
   return (
-    <View
-      style={ styles.container}
-    >
+    <View style={[{ backgroundColor: bgColor },styles.container ]}>
       <Image source={ PostItImage } style={styles.image}/>
-      <Text style={styles.title}>Welcome To ReactNApp</Text>
-      <Text style={styles.subtitle}>Your notes</Text>
+       <Text style={[styles.title, { color: txtColor }]}>Welcome To ReactNApp</Text>
+      <Text style={[styles.subtitle, { color: txtColor }]}>Your notes</Text>
       <TouchableOpacity 
-        style={styles.button}
+        style={[styles.button, { backgroundColor: btnBg }]}
         onPress={() => router.push("/notes")}
       >
         <Text style={styles.buttonText}>Get Started</Text>
       </TouchableOpacity>
       <TouchableOpacity 
-        style={styles.button}
+        style={[styles.button, { backgroundColor: btnBg }]}
         onPress={() => router.push("/authors")}
       >
         <Text style={styles.buttonText}>Authors</Text>
@@ -35,7 +40,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#f8f9fa'
   },
   image: {
     width: 100,

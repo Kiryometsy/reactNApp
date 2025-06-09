@@ -63,12 +63,22 @@ async function getNoteList() {
       return([])
 		}
 	}
-async function mockData() {
-		await database.execAsync(`
-            INSERT INTO Notes (noteId, text) VALUES ('1', 'note 1');
-            INSERT INTO Notes (noteId, text) VALUES ('2', 'note 2');
-            INSERT INTO Notes (noteId, text) VALUES ('3', 'note 3');
-            `);
+  async function mockData() {
+      await database.execAsync(`
+      INSERT INTO Notes (noteId, text) VALUES ('1', 'note 1');
+      INSERT INTO Notes (noteId, text) VALUES ('2', 'note 2');
+      INSERT INTO Notes (noteId, text) VALUES ('3', 'note 3');
+      INSERT INTO Notes (noteId, text) VALUES ('4', 'note 4');
+      INSERT INTO Notes (noteId, text) VALUES ('5', 'note 5');
+      INSERT INTO Notes (noteId, text) VALUES ('6', 'note 6');
+      INSERT INTO Notes (noteId, text) VALUES ('7', 'note 7');
+      INSERT INTO Notes (noteId, text) VALUES ('8', 'note 8');
+      INSERT INTO Notes (noteId, text) VALUES ('9', 'note 9');
+      INSERT INTO Notes (noteId, text) VALUES ('10', 'note 10');
+      INSERT INTO Notes (noteId, text) VALUES ('11', 'note 11');
+      INSERT INTO Notes (noteId, text) VALUES ('12', 'note 12');
+  `);
+
 	}
 async function deleteTable() {
 		try {

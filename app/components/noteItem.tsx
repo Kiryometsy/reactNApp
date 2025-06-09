@@ -1,52 +1,27 @@
 import { useRef, useState } from "react";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useTheme } from "../lib/ThemeContext";
 
 
-const NoteItem=({ note,onDelete,onEdit,onStartEditing}: Props)=>{
-  const [isEditing,setIsEditing]=useState(false);
+const NoteItem=({ note,onDelete,onEdit,setModalVisible}: Props)=>{
   const [editedText,setEditedText]=useState(note.text);
   const inputRef=useRef(null);
 
+  const { theme } = useTheme();
+  const bgColor   = theme === "light" ? "#f5f5f5" : "#2c2c2c";
+  const textColor = theme === "light" ? "#333"     : "#ddd";
 
-  function handleSave(){
+  function handleEdit(){
     if (editedText.trim() === '') return;
     onEdit(note.id, editedText);
-    setIsEditing(false);
   }
   return (
-    <TouchableOpacity style={styles.noteItem} onPress={() => {
-      onStartEditing?.(note.id);
-      setIsEditing(true)
-      }}>
-      {isEditing ?(
-        <TextInput
-        ref={inputRef}
-        style={styles.input}
-        value={editedText}
-        onChangeText={setEditedText}
-        autoFocus
-        onSubmitEditing={handleSave}
-        returnKeyType="done"
-        />
-      ):(
-        <Text style={styles.noteText}>{note.text}</Text>
-      )}
+    <TouchableOpacity  style={[styles.noteItem, { backgroundColor: bgColor }]} onPress={() => {
+      handleEdit();
+      setModalVisible(true)}}>
+        <Text style={[styles.noteText, { color: textColor }]}>{note.text}</Text>
+
       <View style={styles.actions}>
-        {isEditing ?(
-          <TouchableOpacity onPress={()=>{
-            handleSave();
-            inputRef.current.blur();
-          }}>
-            <Text style={styles.edit}>💾</Text>
-          </TouchableOpacity>
-        ):(
-          <TouchableOpacity onPress={() => {
-            onStartEditing?.(note.id);
-            setIsEditing(true)
-          }}>
-            <Text style={styles.edit}>✏️</Text>
-          </TouchableOpacity>
-        )}
         <TouchableOpacity onPress={()=>onDelete(note.id)}>
           <Text style={styles.delete}>❌</Text>
         </TouchableOpacity>
@@ -60,7 +35,7 @@ type Props={
     note:Note,
     onDelete:(id:number) => void,
     onEdit:(id:number,editedText:string) => void,
-    onStartEditing?: (id: number) => void;
+    setModalVisible:(state:boolean)=>void;
 }
 export type Note={
 id:number,noteId:string,text:string

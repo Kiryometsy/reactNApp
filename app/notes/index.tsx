@@ -1,36 +1,44 @@
 import AddNoteModal from "@/app/components/AddNoteModal";
+import EditNoteModal from "@/app/components/EditNoteModal";
 import NoteList from "@/app/components/noteList";
 import useDbService from "@/app/lib/db";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
-	ActivityIndicator,
-	Alert,
-	Keyboard,
-	KeyboardAvoidingView,
-	Platform,
-	StyleSheet,
-	Text,
-	TouchableOpacity,
-	TouchableWithoutFeedback,
-	View
+  ActivityIndicator,
+  Alert,
+  Keyboard,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from "react-native";
+import { Note } from "../components/noteItem";
+import { useTheme } from "../lib/ThemeContext";
 
-type Note = {
-  id: number;
-  noteId: string;
-  text: string;
-};
+
+
 
 const NoteScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [newNote, setNewNote] = useState("");
+
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [noteEdit,setNoteEdit]=useState<Note>({id:0,noteId:"",text:""});
+
   const [loading, setLoading] = useState(false);
-  const [currentlyEditingId, setCurrentlyEditingId] = useState<number | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   const noteService = useDbService();
+
+  const { theme } = useTheme();
+  // dynamic colors based on theme
+  const bgColor    = theme === "light" ? "#fff"     : "#121212";
+  const textColor  = theme === "light" ? "#333"     : "#ddd";
+  const fabColor   = theme === "light" ? "#007bff"  : "#1e90ff";
+  const accent     = theme === "light" ? "#007bff"  : "#1e90ff";
 
   useFocusEffect(
     useCallback(() => {
@@ -42,30 +50,11 @@ const NoteScreen = () => {
     }, [])
   );
 
-  useEffect(() => {
-    const showSub = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-
   async function getList() {
     setLoading(true);
     const list = await noteService.getNoteList();
     setNotes(list);
     setLoading(false);
-  }
-
-  async function mockDb() {
-    await noteService.mockData();
-    getList();
-  }
-
-  async function deleteTable() {
-    await noteService.deleteTable();
-    getList();
   }
 
   async function addNote() {
@@ -106,50 +95,43 @@ const NoteScreen = () => {
         note.id === id ? { ...note, text: editedText } : note
       )
     );
+    setNoteEdit({id:0,noteId:"",text:""});
+    setEditModalVisible(false);
+    getList();
   }
-
+  function handleModalEdit(id:number,text:string){
+    //console.log(editNote)
+    setNoteEdit({id:id,noteId:"",text:text})
+  }
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 80}
+    <View
+       style={[styles.container, { backgroundColor: bgColor }]}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.container}>
           {loading ? (
             <ActivityIndicator size="large" color="#007bff" />
           ) : notes.length === 0 ? (
-            <Text style={styles.noNotesText}>You have no notes</Text>
+            <Text style={[styles.noNotesText, { color: textColor }]}>You have no notes</Text>
           ) : (
             <NoteList
               notes={notes}
               onDelete={deleteNote}
-              onEdit={editNote}
-              currentlyEditingId={currentlyEditingId}
-              onStartEditing={setCurrentlyEditingId}
+              onEdit={handleModalEdit}
+              setModalVisible={setEditModalVisible}
             />
           )}
 
           {/* Always show Add Note button */}
-          <TouchableOpacity
-            style={styles.addButton}
+           <TouchableOpacity
+            style={[styles.fab, { backgroundColor: fabColor }]}
             onPress={() => setModalVisible(true)}
-          >
-            <Text style={styles.addButtonText}>+ Add Note</Text>
+            activeOpacity={0.7}
+            >
+            <Ionicons name="add" size={28} color="#fff" />
           </TouchableOpacity>
 
-          {/* Conditionally render Mock/Delete buttons if keyboard not visible */}
-          {!keyboardVisible && (
-            <>
-              <TouchableOpacity style={styles.mockButton} onPress={mockDb}>
-                <Text style={styles.addButtonText}>Mock table</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.deleteButton} onPress={deleteTable}>
-                <Text style={styles.addButtonText}>Delete table</Text>
-              </TouchableOpacity>
-            </>
-          )}
+          
 
           <AddNoteModal
             modalVisible={modalVisible}
@@ -158,9 +140,16 @@ const NoteScreen = () => {
             setNewNote={setNewNote}
             addNote={addNote}
           />
+          <EditNoteModal
+            editModalVisible={editModalVisible}
+            setEditModalVisible={setEditModalVisible}
+            newNote={noteEdit}
+            setNewNote={setNoteEdit}
+            editNote={editNote}
+          />
         </View>
       </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 
@@ -168,23 +157,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: "#fff",
   },
-  addButton: {
+  fab: {
     position: "absolute",
-    bottom: 20,
-    left: 20,
-    right: 20,
-    backgroundColor: "#007bff",
-    padding: 15,
-    borderRadius: 8,
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    elevation: 8,
   },
-  addButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
+  
   errorText: {
     color: "red",
     textAlign: "center",
@@ -192,31 +181,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   noNotesText: {
+    flex: 1,
     textAlign: "center",
     fontSize: 18,
     fontWeight: "bold",
-    color: "#555",
-    marginTop: 15,
-  },
-  mockButton: {
-    position: "absolute",
-    bottom: 80,
-    left: 20,
-    right: 20,
-    backgroundColor: "#ccc",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  deleteButton: {
-    position: "absolute",
-    bottom: 120,
-    left: 20,
-    right: 20,
-    backgroundColor: "#ccc",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
   },
 });
 
